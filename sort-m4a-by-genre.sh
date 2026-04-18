@@ -32,6 +32,7 @@ if ! command -v ffprobe >/dev/null 2>&1; then
   exit 1
 fi
 
+# Use the folders the person gives us, or fall back to the current folder.
 SOURCE_DIR="${1:-.}"
 DEST_DIR="${2:-$SOURCE_DIR}"
 COPY_ONLY="${COPY_ONLY:-0}"
@@ -47,6 +48,7 @@ mkdir -p "$DEST_DIR"
 sanitize_name() {
   local value="$1"
 
+  # Clean up the genre text so it becomes a safe folder name.
   # Replace path separators and trim surrounding whitespace.
   value="${value//\//-}"
   value="${value//$'\n'/ }"
@@ -64,6 +66,7 @@ sanitize_name() {
 
 read_genre() {
   local file="$1"
+  # Ask ffprobe to read just the genre tag from the audio file metadata.
   ffprobe \
     -v error \
     -show_entries format_tags=genre \
@@ -87,6 +90,7 @@ unique_target_path() {
   candidate="$dir/$base_name"
   counter=1
 
+  # If a file with the same name already exists, add _1, _2, and so on.
   while [[ -e "$candidate" ]]; do
     candidate="$dir/${stem}_${counter}${ext}"
     ((counter++))
@@ -108,14 +112,17 @@ log_action() {
     "$(basename "$target_file")"
 }
 
+# Walk through every .m4a file under the source folder, including subfolders.
 find "$SOURCE_DIR" -type f \( -iname '*.m4a' \) -print0 |
 while IFS= read -r -d '' file; do
   genre="$(read_genre "$file" || true)"
   genre="$(sanitize_name "$genre")"
 
+  # Make the genre folder if it does not exist yet.
   target_dir="$DEST_DIR/$genre"
   mkdir -p "$target_dir"
 
+  # Pick a destination name that will not overwrite an existing file.
   target_path="$(unique_target_path "$target_dir" "$(basename "$file")")"
 
   if [[ "$COPY_ONLY" == "1" ]]; then
